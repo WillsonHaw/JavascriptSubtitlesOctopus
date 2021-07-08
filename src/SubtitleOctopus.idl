@@ -173,8 +173,10 @@ interface SubtitleOctopus {
     void setLogLevel(long level);
     void initLibrary(long frame_w, long frame_h);
     void createTrack(DOMString subfile);
+    void createEmptyTrack();
     void createTrackMem(DOMString buf, unsigned long bufsize);
     void removeTrack();
+    void processData(ASS_Track track, DOMString data, unsigned long size);
     void resizeCanvas(long frame_w, long frame_h);
     ASS_Image renderImage(double time, IntPtr changed);
     void quitLibrary();

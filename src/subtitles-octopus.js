@@ -11,6 +11,31 @@ var SubtitlesOctopus = function (options) {
     }
     console.log("WebAssembly support detected: " + (supportsWebAssembly ? "yes" : "no"));
 
+    var resolvers = {};
+    var resolverId = 0;
+
+    function postMessagePromise(message) {
+        return new Promise(function (resolve) {
+            const id = resolverId++;
+
+            resolvers[id] = resolve;
+
+            self.worker.postMessage(
+                Object.assign({}, message, { resolverId: id })
+            );
+        });
+    }
+
+    function resolveMessagePromise(resolverId, data) {
+        var resolve = resolvers[resolverId];
+
+        if (resolve) {
+            resolve(data);
+
+            delete resolvers[resolverId];
+        }
+    }
+
     var self = this;
     self.canvas = options.canvas; // HTML canvas element (optional if video specified)
     self.renderMode = options.lossyRender ? 'fast' : (options.blendRender ? 'blend' : 'normal');
@@ -387,8 +412,7 @@ var SubtitlesOctopus = function (options) {
                 break;
             }
             case 'get-events': {
-                console.log(data.target);
-                console.log(data.events);
+                resolveMessagePromise(data.resolverId, data.events);
                 break;
             }
             case 'get-styles': {
@@ -493,12 +517,25 @@ var SubtitlesOctopus = function (options) {
         });
     };
 
+    self.appendToTrack = function (content) {
+        self.worker.postMessage({
+            target: 'append-to-track',
+            content: content
+        });
+    };
+
+    self.appendBytesToTrack = function (typedArray) {
+        self.worker.postMessage({
+            target: 'append-bytes-to-track',
+            buffer: typedArray
+        }, [typedArray.buffer]);
+    }
+
     self.freeTrack = function (content) {
         self.worker.postMessage({
             target: 'free-track'
         });
     };
-
 
     self.render = self.setCurrentTime;
 
@@ -538,8 +575,8 @@ var SubtitlesOctopus = function (options) {
     };
 
     self.getEvents = function () {
-        self.worker.postMessage({
-            target: 'get-events'
+        return postMessagePromise({
+            target: 'get-events',
         });
     };
 

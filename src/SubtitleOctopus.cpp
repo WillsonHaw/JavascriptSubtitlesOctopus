@@ -149,11 +149,24 @@ public:
         }
     }
 
+    void createEmptyTrack() {
+        removeTrack();
+        track = ass_new_track(ass_library);
+        if (!track) {
+            printf("Failed to create an empty track\n");
+            exit(4);
+        }
+    }
+
     void removeTrack() {
         if (track != NULL) {
             ass_free_track(track);
             track = NULL;
         }
+    }
+
+    void processData(ASS_Track *track, char *data, int size) {
+        ass_process_data(track, data, size);
     }
     /* TRACK */
 

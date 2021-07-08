@@ -89,6 +89,35 @@ self.setTrack = function (content) {
     self.getRenderMethod()();
 };
 
+self.createEmptyTrack = function () {
+    // // Make sure that the fonts are loaded
+    // self.writeAvailableFontsToFS(content);
+
+    // Tell libass to render the new track
+    self.octObj.createEmptyTrack();
+    self.ass_track = self.octObj.track;
+    self.getRenderMethod()();
+}
+
+/**
+ * Append more content to the existing subtitle track for streaming subs
+ * @param {!string} chunk the chunk of data to append
+ */
+self.appendToTrack = function (chunk) {
+    self.octObj.processData(self.octObj.track, chunk, chunk.length);
+}
+
+self.appendBytesToTrack = function (buffer) {
+    var array = new Uint8Array(buffer);
+    var ptr = Module._malloc(array.length * array.BYTES_PER_ELEMENT);
+
+    Module.HEAPU8.set(array, ptr);
+
+    self.octObj.processData(self.octObj.track, ptr, array.length);
+
+    Module._free(ptr);
+}
+
 /**
  * Remove subtitle track.
  */
@@ -478,9 +507,21 @@ function onMessageFromMainEmscriptenThread(message) {
         messageBuffer.push(message);
         return;
     }
+
     if (calledMain && messageResenderTimeout) {
         clearTimeout(messageResenderTimeout);
         messageResender();
+    }
+
+    function returnMessage(result) {
+        var id = message.data.resolverId;
+        var response = result;
+
+        if (id != null) {
+            response = Object.assign({}, result, { resolverId: id });
+        }
+
+        postMessage(response);
     }
     //console.log('worker got ' + JSON.stringify(message.data).substr(0, 150) + '\n');
     switch (message.data.target) {
@@ -558,6 +599,12 @@ function onMessageFromMainEmscriptenThread(message) {
         case 'set-track-by-url':
             self.setTrackByUrl(message.data.url);
             break;
+        case 'append-to-track':
+            self.appendToTrack(message.data.content);
+            break;
+        case 'append-bytes-to-track':
+            self.appendBytesToTrack(message.data.buffer);
+            break;
         case 'create-event':
             var event = message.data.event;
             var i = self.octObj.allocEvent();
@@ -588,7 +635,7 @@ function onMessageFromMainEmscriptenThread(message) {
 
                 events.push(event);
             }
-            postMessage({
+            returnMessage({
                 target: "get-events",
                 time: Date.now(),
                 events: events

@@ -50,7 +50,7 @@ Module["preRun"].push(function () {
 
     Module["FS_createPath"]("/", "fonts", true, true);
 
-    if (!self.subContent) {
+    if (!self.subContent && self.subUrl) {
         // We can use sync xhr cause we're inside Web Worker
         if (self.subUrl.endsWith(".br")) {
             self.subContent = Module["BrotliDecode"](readBinary(self.subUrl))
@@ -59,7 +59,7 @@ Module["preRun"].push(function () {
         }
     }
 
-    if (self.availableFonts && self.availableFonts.length !== 0) {
+    if (self.subContent && self.availableFonts && self.availableFonts.length !== 0) {
         var sections = parseAss(self.subContent);
             for (var i = 0; i < sections.length; i++) {
                 for (var j = 0; j < sections[i].body.length; j++) {
@@ -100,7 +100,7 @@ Module['onRuntimeInitialized'] = function () {
     self.blendH = Module._malloc(4);
 
     self.octObj.initLibrary(screen.width, screen.height);
-    self.octObj.createTrack("/sub.ass");
+    self.octObj.createEmptyTrack();
     self.ass_track = self.octObj.track;
     self.ass_library = self.octObj.ass_library;
     self.ass_renderer = self.octObj.ass_renderer;
